@@ -1,7 +1,7 @@
-genai
+google-genai
+sentence_transformers
 neo4j
 networkx
-PyMuPDF
 uvicorn
 fastapi
 faiss-cpu
