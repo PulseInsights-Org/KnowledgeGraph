@@ -1,0 +1,7 @@
+genai
+neo4j
+networkx
+PyMuPDF
+uvicorn
+fastapi
+faiss-cpu

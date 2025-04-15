@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gokaldas Knowledge Graph Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Add Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --primary-dark: #2563EB;
+            --primary-light: #DBEAFE;
+            --accent: #8B5CF6;
+            --dark: #0F172A;
+            --dark-gray: #334155;
+            --mid-gray: #64748B;
+            --light-gray: #E2E8F0;
+            --light: #F8FAFC;
+            --success: #10B981;
+            --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAFA;
+            color: var(--dark);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+            font-size: 2.75rem;
+            letter-spacing: -0.025em;
+            position: relative;
+            display: inline-block;
+        }
+
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 2px;
+        }
+
+        .header p {
+            color: var(--mid-gray);
+            font-size: 1.15rem;
+            max-width: 600px;
+            margin: 1.5rem auto 0;
+        }
+
+        .logo-accent {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            border: 1px solid var(--light-gray);
+        }
+
+        .query-input {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .query-input label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            color: var(--dark-gray);
+        }
+
+        .query-input textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--light-gray);
+            background-color: var(--light);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .query-input textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-submit:disabled {
+            background: var(--light-gray);
+            color: var(--mid-gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(59, 130, 246, 0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-container p {
+            color: var(--mid-gray);
+            font-weight: 500;
+        }
+
+        .results-card {
+            display: none;
+        }
+
+        .results-content {
+            padding: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--dark-gray);
+        }
+
+        /* Markdown content styling */
+        .markdown-content {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .markdown-content h1, 
+        .markdown-content h2, 
+        .markdown-content h3, 
+        .markdown-content h4, 
+        .markdown-content h5, 
+        .markdown-content h6 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1.3;
+        }
+
+        .markdown-content h1 {
+            font-size: 1.8rem;
+            border-bottom: 1px solid var(--light-gray);
+            padding-bottom: 0.5rem;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.5rem;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.25rem;
+        }
+
+        .markdown-content p {
+            margin-bottom: 1rem;
+        }
+
+        .markdown-content a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .markdown-content em {
+            font-style: italic;
+        }
+
+        .markdown-content ul, 
+        .markdown-content ol {
+            margin-bottom: 1rem;
+            margin-left: 1.5rem;
+        }
+
+        .markdown-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid var(--primary-light);
+            padding-left: 1rem;
+            color: var(--mid-gray);
+            margin: 1rem 0;
+        }
+
+        .markdown-content pre {
+            background-color: #1E293B;
+            color: #E2E8F0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .markdown-content code {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+        }
+
+        .markdown-content pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .markdown-content table th,
+        .markdown-content table td {
+            border: 1px solid var(--light-gray);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .markdown-content table th {
+            background-color: var(--light);
+            font-weight: 600;
+        }
+
+        .markdown-content hr {
+            border: 0;
+            border-top: 1px solid var(--light-gray);
+            margin: 1.5rem 0;
+        }
+
+        /* Custom scrollbar */
+        .results-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .results-content::-webkit-scrollbar-track {
+            background: var(--light);
+        }
+
+        .results-content::-webkit-scrollbar-thumb {
+            background: var(--light-gray);
+            border-radius: 10px;
+        }
+
+        .results-content::-webkit-scrollbar-thumb:hover {
+            background: var(--mid-gray);
+        }
+
+        .error-message {
+            background-color: #FEF2F2;
+            color: #EF4444;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-weight: 500;
+            display: none;
+            border-left: 3px solid #EF4444;
+        }
+
+        .footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--mid-gray);
+            font-size: 0.875rem;
+            padding: 1rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1><span class="logo-accent">Gokaldas</span> Knowledge Graph Explorer</h1>
+            <p>Navigate through comprehensive insights about Gokaldas Exports and related entities</p>
+        </header>
+        
+        <div class="card">
+            <div class="query-input">
+                <label for="query">What would you like to know about Gokaldas?</label>
+                <textarea id="query" placeholder="e.g., Tell me about Gokaldas Exports' financial performance or business relationships" autofocus></textarea>
+            </div>
+            
+            <button id="submitBtn" class="btn-submit">
+                <i class="fas fa-search"></i> Get Information
+            </button>
+            
+            <div id="errorMessage" class="error-message">
+                <i class="fas fa-circle-exclamation"></i> An error occurred. Please try again.
+            </div>
+        </div>
+        
+        <div id="loadingContainer" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Analyzing your query...</p>
+        </div>
+        
+        <div id="resultsCard" class="card results-card">
+            <div id="resultsContent" class="results-content markdown-content"></div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const queryInput = document.getElementById('query');
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingContainer = document.getElementById('loadingContainer');
+            const resultsCard = document.getElementById('resultsCard');
+            const resultsContent = document.getElementById('resultsContent');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Configure marked.js for secure rendering
+            marked.setOptions({
+                breaks: true,        // Add line breaks when newlines are present in paragraphs
+                sanitize: false,     // Sanitize HTML is now deprecated
+                mangle: false,       // Don't try to link email addresses
+                headerIds: true,     // Generate IDs for headers
+                gfm: true,           // GitHub flavored markdown
+                tables: true,        // Enable tables
+                smartLists: true     // Use smarter list behavior than markdown spec
+            });
+            
+            // Form submission
+            submitBtn.addEventListener('click', async function() {
+                const query = queryInput.value.trim();
+                
+                if (!query) {
+                    queryInput.focus();
+                    return;
+                }
+                
+                // Show loading, hide results and errors
+                loadingContainer.style.display = 'flex';
+                resultsCard.style.display = 'none';
+                errorMessage.style.display = 'none';
+                submitBtn.disabled = true;
+                
+                try {
+                    const response = await fetch('/query', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ query })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Server error');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Parse text as Markdown and display as HTML
+                    resultsContent.innerHTML = marked.parse(data.result);
+                    
+                    // Apply syntax highlighting to code blocks if needed
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        // If you add a syntax highlighter library like highlight.js
+                        // You would call it here
+                    });
+                    
+                    resultsCard.style.display = 'block';
+                } catch (error) {
+                    console.error('Error:', error);
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = `Error: ${error.message || 'Failed to process your request'}`;
+                } finally {
+                    loadingContainer.style.display = 'none';
+                    submitBtn.disabled = false;
+                }
+            });
+            
+            // Also allow Enter key to submit
+            queryInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submitBtn.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
