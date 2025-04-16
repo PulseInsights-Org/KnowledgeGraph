@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <!-- Add Marked.js for Markdown parsing -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <style>
         :root {
             --primary: #3B82F6;
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             console.log("Response received, starting to read");
-            
+
             // Handle the streaming response
             const reader = response.body.getReader();
             const decoder = new TextDecoder();

@@ -54,7 +54,7 @@ async def process_query(request: QueryRequest):
         # Initialize the agent with the fixed API key
         agent = KGAgent(api_key=API_KEY)
         async def stream_response():
-            for chunk in agent.QAgent(query=request.query):
+            async for chunk in agent.QAgent(query=request.query):
                 # Yield each chunk as a Server-Sent Event (SSE)
                 yield f"data: {json.dumps({'text': chunk})}\n\n"
             # End of stream
