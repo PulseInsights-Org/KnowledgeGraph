@@ -69,3 +69,12 @@ class FaissStore():
         self.index = faiss.IndexFlatL2(self.dim)  # Create a fresh, empty index
         self.vector_id_map = {}
         self.vector_idx = 0
+
+    def load(self):
+        self.index = faiss.read_index(self.vectors_path)
+        with open(self.id_map_path, "r", encoding="utf-8") as f:
+            self.vector_id_map = json.load(f)
+        self.vector_id_map = {int(k): v for k, v in self.vector_id_map.items()}
+        self.vector_idx = max(map(int, self.vector_id_map.keys())) + 1 if self.vector_id_map else 0
+        self.index_loaded = True
+        print("Index and ID map loaded.")
