@@ -143,10 +143,9 @@ class KGAgent():
                                 ),
                             )
     
-    def QAgent(self, query):
+    async def QAgent(self, query):
         
         store.build_index()
-        model_responses = []
         initial_results = store.search(query=query, k=5)
         initial_message = f"User Query: {query}\n\nTop 5 results from vector store:\n{initial_results}"
         response = self.chat.send_message(initial_message)
