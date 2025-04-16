@@ -26,6 +26,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Type"]
 )
 
 # Mount static files directory
@@ -61,7 +62,12 @@ async def process_query(request: QueryRequest):
         
         return StreamingResponse(
             stream_response(),
-            media_type="text/event-stream"
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  
+            }
         )
         # # Execute the query
         # result = agent.QAgent(query=request.query)
