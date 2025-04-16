@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gokaldas Knowledge Graph Explorer</title>
-    <link rel="icon" type="image/png" href=static\favicon.ico>
+    <link rel="icon" type="image/png" href=static\css\favicon.ico>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
             --primary: #3B82F6;
             --primary-dark: #2563EB;
             --primary-light: #DBEAFE;
-            --accent: #8B5CF6;
+            --accent: #8B5CF6; 
             --dark: #0F172A;
             --dark-gray: #334155;
             --mid-gray: #64748B;
@@ -405,83 +405,126 @@
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const queryInput = document.getElementById('query');
-            const submitBtn = document.getElementById('submitBtn');
-            const loadingContainer = document.getElementById('loadingContainer');
-            const resultsCard = document.getElementById('resultsCard');
-            const resultsContent = document.getElementById('resultsContent');
-            const errorMessage = document.getElementById('errorMessage');
+        // Replace the existing script block with this improved version
+document.addEventListener('DOMContentLoaded', function() {
+    const queryInput = document.getElementById('query');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingContainer = document.getElementById('loadingContainer');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsContent = document.getElementById('resultsContent');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    // Configure marked.js for secure rendering
+    marked.setOptions({
+        breaks: true,        // Add line breaks when newlines are present in paragraphs
+        sanitize: false,     // Sanitize HTML is now deprecated
+        mangle: false,       // Don't try to link email addresses
+        headerIds: true,     // Generate IDs for headers
+        gfm: true,           // GitHub flavored markdown
+        tables: true,        // Enable tables
+        smartLists: true     // Use smarter list behavior than markdown spec
+    });
+    
+    // Form submission
+    submitBtn.addEventListener('click', async function() {
+        const query = queryInput.value.trim();
+        
+        if (!query) {
+            queryInput.focus();
+            return;
+        }
+        
+        // Show loading, hide results and errors
+        loadingContainer.style.display = 'flex';
+        resultsCard.style.display = 'none';
+        errorMessage.style.display = 'none';
+        submitBtn.disabled = true;
+        
+        try {
+            // Clear previous results
+            resultsContent.innerHTML = '';
             
-            // Configure marked.js for secure rendering
-            marked.setOptions({
-                breaks: true,        // Add line breaks when newlines are present in paragraphs
-                sanitize: false,     // Sanitize HTML is now deprecated
-                mangle: false,       // Don't try to link email addresses
-                headerIds: true,     // Generate IDs for headers
-                gfm: true,           // GitHub flavored markdown
-                tables: true,        // Enable tables
-                smartLists: true     // Use smarter list behavior than markdown spec
+            // Show results card to display streaming content
+            resultsCard.style.display = 'block';
+            
+            // Initialize accumulated text
+            let accumulatedText = '';
+            
+            // Fetch with streaming response
+            const response = await fetch('/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query })
             });
             
-            // Form submission
-            submitBtn.addEventListener('click', async function() {
-                const query = queryInput.value.trim();
+            if (!response.ok) {
+                throw new Error('Server error');
+            }
+            
+            // Handle the streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
                 
-                if (!query) {
-                    queryInput.focus();
-                    return;
-                }
+                // Decode the chunk and add to buffer
+                buffer += decoder.decode(value, { stream: true });
                 
-                // Show loading, hide results and errors
-                loadingContainer.style.display = 'flex';
-                resultsCard.style.display = 'none';
-                errorMessage.style.display = 'none';
-                submitBtn.disabled = true;
+                // Process buffer for SSE events
+                let lines = buffer.split('\n\n');
+                buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
                 
-                try {
-                    const response = await fetch('/query', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ query })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Server error');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.substring(6); // Remove 'data: ' prefix
+                        
+                        if (data === '[DONE]') {
+                            // End of stream
+                            break;
+                        }
+                        
+                        try {
+                            const parsedData = JSON.parse(data);
+                            if (parsedData.text) {
+                                // Append the new text chunk to the accumulated text
+                                accumulatedText += parsedData.text;
+                                
+                                // Render all accumulated text
+                                resultsContent.innerHTML = marked.parse(accumulatedText);
+                                
+                                // Scroll to the bottom of the results container
+                                resultsContent.scrollTop = resultsContent.scrollHeight;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE data:', e);
+                        }
                     }
-                    
-                    const data = await response.json();
-                    
-                    // Parse text as Markdown and display as HTML
-                    resultsContent.innerHTML = marked.parse(data.result);
-                    
-                    // Apply syntax highlighting to code blocks if needed
-                    document.querySelectorAll('pre code').forEach((block) => {
-                        // If you add a syntax highlighter library like highlight.js
-                        // You would call it here
-                    });
-                    
-                    resultsCard.style.display = 'block';
-                } catch (error) {
-                    console.error('Error:', error);
-                    errorMessage.style.display = 'block';
-                    errorMessage.textContent = `Error: ${error.message || 'Failed to process your request'}`;
-                } finally {
-                    loadingContainer.style.display = 'none';
-                    submitBtn.disabled = false;
                 }
-            });
+            }
             
-            // Also allow Enter key to submit
-            queryInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    submitBtn.click();
-                }
-            });
-        });
+        } catch (error) {
+            console.error('Error:', error);
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = `Error: ${error.message || 'Failed to process your request'}`;
+        } finally {
+            loadingContainer.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
+    
+    // Also allow Enter key to submit
+    queryInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submitBtn.click();
+        }
+    });
+});
     </script>
 </body>
 </html>

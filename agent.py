@@ -104,10 +104,11 @@ class KGAgent():
                 text_response = "".join(part.text for part in response.candidates[0].content.parts if part.text is not None)
                 print("Final Answer:", text_response)
                 if text_response:
-                    model_responses.append(text_response)
-                    full_response = "\n\n".join(model_responses)
-                    print("Returning response:", full_response[:100] + "..." if len(full_response) > 100 else full_response)
-                    return full_response  
+                    # model_responses.append(text_response)
+                    # full_response = "\n\n".join(model_responses)
+                    # return full_response
+                    yield text_response
+                    return  
 
             function_responses = []
 
@@ -117,7 +118,8 @@ class KGAgent():
                 text_response = "".join(part.text for part in response.candidates[0].content.parts if hasattr(part, 'text') and part.text is not None)
                 if text_response:
                     print("Model Response:", text_response)
-                    model_responses.append(text_response)
+                    # model_responses.append(text_response)
+                    yield text_response
 
                 print(f"Executing function: {function_name}")
                 if function_name == "execute_query":

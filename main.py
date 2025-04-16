@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from pydantic import BaseModel
-import os
+import json
 from typing import List
 from agent import KGAgent
 
@@ -52,16 +52,27 @@ async def process_query(request: QueryRequest):
     try:
         # Initialize the agent with the fixed API key
         agent = KGAgent(api_key=API_KEY)
+        async def stream_response():
+            for chunk in agent.QAgent(query=request.query):
+                # Yield each chunk as a Server-Sent Event (SSE)
+                yield f"data: {json.dumps({'text': chunk})}\n\n"
+            # End of stream
+            yield "data: [DONE]\n\n"
         
-        # Execute the query
-        result = agent.QAgent(query=request.query)
-        print(f"Result type: {type(result)}")  # Check the type
-        print(f"Result length: {len(result) if result else 0}")
+        return StreamingResponse(
+            stream_response(),
+            media_type="text/event-stream"
+        )
+        # # Execute the query
+        # result = agent.QAgent(query=request.query)
+        # print(f"Result type: {type(result)}")  # Check the type
+        # print(f"Result length: {len(result) if result else 0}")
         
-        # Return the result
-        return QueryResponse(result=result)
+        # # Return the result
+        # return QueryResponse(result=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+    
 
 # Health check endpoint
 @app.get("/health")
